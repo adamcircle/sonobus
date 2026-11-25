@@ -157,6 +157,7 @@ public:
     std::function<Value*()> getShouldOverrideSampleRateValue; // = []() { return 0; };
     std::function<Value*()> getShouldCheckForNewVersionValue; // = []() { return 0; };
     std::function<Value*()> getAllowBluetoothInputValue; // = []() { return 0; };
+    std::function<Value*()> getRunInMenuBarValue; // = []() { return 0; };
 
     std::function<StringArray*()> getRecentSetupFiles; // = []() { return 0; };
     std::function<String*()> getLastRecentsFolder; // = []() { return 0; };

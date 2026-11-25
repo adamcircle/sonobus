@@ -38,4 +38,16 @@ void disableAppNap() {
     }
 }
 
+void setMacDockIconVisible(bool visible)
+{
+    // the accessory policy hides the Dock icon and the app menu bar, but still allows windows
+    [NSApp setActivationPolicy: visible ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory];
+}
+
+void activateMacApp()
+{
+    // without a Dock icon we are never activated implicitly, so do it explicitly
+    [NSApp activateIgnoringOtherApps:YES];
+}
+
 #endif

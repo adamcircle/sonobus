@@ -11,6 +11,12 @@ void getSafeAreaInsets(void * component, float & top, float & bottom, float & le
 
 void disableAppNap();
 
+// show or hide the Dock icon (and app menu bar) at runtime, used for menu bar mode
+void setMacDockIconVisible(bool visible);
+
+// make this app the active one, so its windows get keyboard focus
+void activateMacApp();
+
 #endif
 
 #if JUCE_IOS

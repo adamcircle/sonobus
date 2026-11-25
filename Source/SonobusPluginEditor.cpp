@@ -3456,6 +3456,7 @@ void SonobusAudioProcessorEditor::showSettings(bool flag)
             mOptionsView->getShouldOverrideSampleRateValue = getShouldOverrideSampleRateValue;
             mOptionsView->getShouldCheckForNewVersionValue = getShouldCheckForNewVersionValue;
             mOptionsView->getAllowBluetoothInputValue = getAllowBluetoothInputValue;
+            mOptionsView->getRunInMenuBarValue = getRunInMenuBarValue;
             mOptionsView->updateSliderSnap = [this]() {  updateSliderSnap();  };
             mOptionsView->setupLocalisation = [this](const String & lang) {  return setupLocalisation(lang);  };
             mOptionsView->saveSettingsIfNeeded = [this]() {  if (saveSettingsIfNeeded) saveSettingsIfNeeded();  };

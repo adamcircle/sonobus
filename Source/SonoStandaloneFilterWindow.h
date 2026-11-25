@@ -101,7 +101,8 @@ public:
           autoOpenMidiDevices (shouldAutoOpenMidiDevices),
           shouldOverrideSampleRate (var(true)),
           allowBluetoothInput (var(false)),
-          shouldCheckForNewVersion (var(true))
+          shouldCheckForNewVersion (var(true)),
+          runInMenuBar (var(false))
     {
         createPlugin();
 
@@ -196,6 +197,7 @@ public:
     Value& getShouldOverrideSampleRateValue()                           { return shouldOverrideSampleRate; }
     Value& getShouldCheckForNewVersionValue()                           { return shouldCheckForNewVersion; }
     Value& getAllowBluetoothInputValue()                           { return allowBluetoothInput; }
+    Value& getRunInMenuBarValue()                           { return runInMenuBar; }
 
     StringArray& getRecentSetupFiles()                           { return recentSetupFiles; }
     String& getLastRecentsFolder()                           { return lastRecentsSetupFolder; }
@@ -357,6 +359,7 @@ public:
             settings->setValue ("shouldOverrideSampleRate", (bool) shouldOverrideSampleRate.getValue());
             settings->setValue ("shouldCheckForNewVersion", (bool) shouldCheckForNewVersion.getValue());
             settings->setValue ("allowBluetoothInput", (bool) allowBluetoothInput.getValue());
+            settings->setValue ("runInMenuBar", (bool) runInMenuBar.getValue());
 
             auto recentSetupXml = std::make_unique<XmlElement>("PATHLIST");
             for (auto fname : recentSetupFiles) {
@@ -398,6 +401,7 @@ public:
             shouldOverrideSampleRate.setValue (settings->getBoolValue ("shouldOverrideSampleRate", (bool) shouldOverrideSampleRate.getValue()));
             shouldCheckForNewVersion.setValue (settings->getBoolValue ("shouldCheckForNewVersion", (bool) shouldCheckForNewVersion.getValue()));
             allowBluetoothInput.setValue (settings->getBoolValue ("allowBluetoothInput", (bool) allowBluetoothInput.getValue()));
+            runInMenuBar.setValue (settings->getBoolValue ("runInMenuBar", (bool) runInMenuBar.getValue()));
 
             auto setupfiles = settings->getXmlValue("recentSetupFiles");
             if (setupfiles) {
@@ -561,6 +565,7 @@ public:
     Value allowBluetoothInput;
 
     Value shouldCheckForNewVersion;
+    Value runInMenuBar;
     StringArray recentSetupFiles;
     String  lastRecentsSetupFolder;
 
@@ -994,6 +999,16 @@ public:
     {
         pluginHolder->savePluginState();
 
+#if JUCE_MAC
+        if ((bool) pluginHolder->getRunInMenuBarValue().getValue()) {
+            // in menu bar mode closing the window only hides it,
+            // it can be shown again (or the app quit) from the menu bar icon
+            pluginHolder->saveAudioDeviceState();
+            setVisible (false);
+            return;
+        }
+#endif
+
         JUCEApplicationBase::getInstance()->systemRequestedQuit();
     }
 
@@ -1073,6 +1088,7 @@ private:
                     sonoeditor->getShouldOverrideSampleRateValue = [this]() { return &(owner.pluginHolder->getShouldOverrideSampleRateValue()); };
                     sonoeditor->getAllowBluetoothInputValue = [this]() { return &(owner.pluginHolder->getAllowBluetoothInputValue()); };
                     sonoeditor->getShouldCheckForNewVersionValue = [this]() { return &(owner.pluginHolder->getShouldCheckForNewVersionValue()); };
+                    sonoeditor->getRunInMenuBarValue = [this]() { return &(owner.pluginHolder->getRunInMenuBarValue()); };
                     sonoeditor->getRecentSetupFiles = [this]() { return &(owner.pluginHolder->getRecentSetupFiles()); };
                     sonoeditor->getLastRecentsFolder = [this]() { return &owner.pluginHolder->getLastRecentsFolder(); };
                 }

@@ -278,6 +278,14 @@ OptionsView::OptionsView(SonobusAudioProcessor& proc, std::function<AudioDeviceM
     }
 #endif
 
+#if JUCE_MAC
+    if (JUCEApplicationBase::isStandaloneApp()) {
+        mOptionsRunInMenuBarButton = std::make_unique<ToggleButton>(TRANS("Run in menu bar (hide Dock icon)"));
+        mOptionsRunInMenuBarButton->setTooltip(TRANS("Show SonoBus as an icon in the menu bar instead of the Dock. Closing the window keeps SonoBus running, click the menu bar icon to show it again, or right-click it to quit."));
+        mOptionsRunInMenuBarButton->addListener(this);
+    }
+#endif
+
     mOptionsInputLimiterButton = std::make_unique<ToggleButton>(TRANS("Use Input FX Limiter"));
     mOptionsInputLimiterButton->addListener(this);
 
@@ -393,6 +401,9 @@ OptionsView::OptionsView(SonobusAudioProcessor& proc, std::function<AudioDeviceM
         mOptionsComponent->addAndMakeVisible(mOptionsShouldCheckForUpdateButton.get());
         if (mOptionsAllowBluetoothInput) {
             mOptionsComponent->addAndMakeVisible(mOptionsAllowBluetoothInput.get());
+        }
+        if (mOptionsRunInMenuBarButton) {
+            mOptionsComponent->addAndMakeVisible(mOptionsRunInMenuBarButton.get());
         }
     }
     mOptionsComponent->addAndMakeVisible(mOptionsSliderSnapToMouseButton.get());
@@ -634,6 +645,10 @@ void OptionsView::updateState(bool ignorecheck)
             mOptionsAllowBluetoothInput->setToggleState((bool)val->getValue(), dontSendNotification);
         }
 
+        if (getRunInMenuBarValue && mOptionsRunInMenuBarButton) {
+            Value * val = getRunInMenuBarValue();
+            mOptionsRunInMenuBarButton->setToggleState((bool)val->getValue(), dontSendNotification);
+        }
     }
 
     mOptionsUnivFontButton->setToggleState(processor.getUseUniversalFont(), dontSendNotification);
@@ -803,6 +818,13 @@ void OptionsView::updateLayout()
         optionsAllowBluetoothBox.items.add(FlexItem(180, minpassheight, *mOptionsAllowBluetoothInput).withMargin(0).withFlex(1));
     }
 
+    optionsRunInMenuBarBox.items.clear();
+    optionsRunInMenuBarBox.flexDirection = FlexBox::Direction::row;
+    if (mOptionsRunInMenuBarButton) {
+        optionsRunInMenuBarBox.items.add(FlexItem(10, 12).withFlex(0));
+        optionsRunInMenuBarBox.items.add(FlexItem(180, minpassheight, *mOptionsRunInMenuBarButton).withMargin(0).withFlex(1));
+    }
+
     optionsPluginDefaultBox.items.clear();
     optionsPluginDefaultBox.flexDirection = FlexBox::Direction::row;
     optionsPluginDefaultBox.items.add(FlexItem(10, 12).withFlex(0));
@@ -838,6 +860,9 @@ void OptionsView::updateLayout()
             optionsBox.items.add(FlexItem(100, minpassheight, optionsAllowBluetoothBox).withMargin(2).withFlex(0));
         }
         optionsBox.items.add(FlexItem(100, minpassheight, optionsCheckForUpdateBox).withMargin(2).withFlex(0));
+        if (mOptionsRunInMenuBarButton) {
+            optionsBox.items.add(FlexItem(100, minpassheight, optionsRunInMenuBarBox).withMargin(2).withFlex(0));
+        }
     }
     optionsBox.items.add(FlexItem(100, minpassheight, optionsDisableShortcutsBox).withMargin(2).withFlex(0));
     optionsBox.items.add(FlexItem(100, minpassheight, optionsDynResampleBox).withMargin(2).withFlex(0));
@@ -1138,6 +1163,14 @@ void OptionsView::buttonClicked (Button* buttonThatWasClicked)
                 device->setAllowBluetoothInput((bool)val->getValue());
             }
 #endif
+        }
+    }
+    else if (buttonThatWasClicked == mOptionsRunInMenuBarButton.get()) {
+
+        if (JUCEApplicationBase::isStandaloneApp() && getRunInMenuBarValue) {
+            // the standalone app listens to this value and switches modes immediately
+            Value * val = getRunInMenuBarValue();
+            val->setValue((bool)mOptionsRunInMenuBarButton->getToggleState());
         }
     }
     else if (buttonThatWasClicked == mOptionsShouldCheckForUpdateButton.get()) {

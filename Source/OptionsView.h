@@ -73,6 +73,7 @@ public:
     std::function<Value*()> getShouldOverrideSampleRateValue; // = []() { return 0; };
     std::function<Value*()> getShouldCheckForNewVersionValue; // = []() { return 0; };
     std::function<Value*()> getAllowBluetoothInputValue; // = []() { return 0; };
+    std::function<Value*()> getRunInMenuBarValue; // = []() { return 0; };
     std::function<void()> updateSliderSnap; // = []() { return 0; };
     std::function<void()> updateKeybindings; // = []() { return 0; };
     std::function<bool(const String &)> setupLocalisation; // = []() { return 0; };
@@ -135,6 +136,7 @@ protected:
     std::unique_ptr<ToggleButton> mOptionsAutoReconnectButton;
     std::unique_ptr<ToggleButton> mOptionsSliderSnapToMouseButton;
     std::unique_ptr<ToggleButton> mOptionsAllowBluetoothInput;
+    std::unique_ptr<ToggleButton> mOptionsRunInMenuBarButton;
     std::unique_ptr<ToggleButton> mOptionsDisableShortcutButton;
     std::unique_ptr<TextButton> mOptionsSavePluginDefaultButton;
     std::unique_ptr<TextButton> mOptionsResetPluginDefaultButton;
@@ -184,6 +186,7 @@ protected:
     FlexBox optionsDefaultLevelBox;
     FlexBox optionsLanguageBox;
     FlexBox optionsAllowBluetoothBox;
+    FlexBox optionsRunInMenuBarBox;
     FlexBox optionsAutoDropThreshBox;
     FlexBox optionsPluginDefaultBox;
 

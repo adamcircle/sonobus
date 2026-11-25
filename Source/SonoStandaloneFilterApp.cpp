@@ -71,8 +71,64 @@ extern juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter();
 namespace juce
 {
 
+#if JUCE_MAC
 //==============================================================================
-class SonobusStandaloneFilterApp  : public JUCEApplication, public Timer
+// Status item shown in the macOS menu bar when running in menu bar mode
+class SonoMenuBarIcon  : public SystemTrayIconComponent
+{
+public:
+    SonoMenuBarIcon (std::function<void()> showFunc, std::function<void()> quitFunc)
+        : onShow (std::move (showFunc)), onQuit (std::move (quitFunc))
+    {
+        setIconImage ({}, createTemplateImage());
+        setIconTooltip (JucePlugin_Name);
+    }
+
+    void mouseDown (const MouseEvent& e) override
+    {
+        if (e.mods.isPopupMenu()) {
+            PopupMenu menu;
+            menu.addItem (TRANS("Show SonoBus"), onShow);
+            menu.addSeparator();
+            menu.addItem (TRANS("Quit SonoBus"), onQuit);
+            showDropdownMenu (menu);
+        }
+        else if (onShow) {
+            onShow();
+        }
+    }
+
+private:
+    // monochrome version of the SonoBus logo (disc with the wave cut out), used as a template image
+    static Image createTemplateImage()
+    {
+        const int size = 44;
+        Image image (Image::ARGB, size, size, true);
+        Graphics g (image);
+
+        auto wave = Drawable::parseSVGPath ("m 39.857288,-209.90042 c 0,0 -29.505848,25.83188 -84.638761,27.25208 l -0.422712,5.2e-4 c 0.06921,0.002 0.137581,0.004 0.206706,0.006 -0.06895,0.002 -0.137157,0.004 -0.20619,0.006 l 0.42168,5.1e-4 c 55.133249,1.42007 84.639277,27.25209 84.639277,27.25209 0,0 22.657312,-15.4815 44.245362,-14.04721 19.28771,1.28146 40.50347,11.59981 40.50347,11.59981 0,0 14.17838,-9.60958 24.87238,-13.07259 16.13943,-5.22638 41.61813,6.72672 41.61813,6.72672 0,0 14.65671,-12.28311 42.79429,-7.00732 28.13757,5.2758 52.16995,7.88686 52.16995,7.88686 0,0 6.9659,-16.07575 29.71239,-19.11511 l 5.64359,0.004 c -1.26079,-0.0407 -2.47983,-0.11976 -3.65974,-0.23306 1.17991,-0.1133 2.39895,-0.1929 3.65974,-0.23357 l -5.64721,0.004 c -22.74361,-3.04057 -29.70877,-19.11459 -29.70877,-19.11459 0,0 -24.03237,2.61105 -52.16995,7.88685 -28.13757,5.27579 -42.79429,-7.00784 -42.79429,-7.00784 0,0 -25.4787,11.95362 -41.61813,6.72724 -10.694,-3.46301 -24.87238,-13.07259 -24.87238,-13.07259 0,0 -21.21577,10.31835 -40.50347,11.59981 -21.588055,1.43429 -44.245362,-14.0472 -44.245362,-14.0472 z");
+
+        auto bounds = image.getBounds().toFloat();
+        Path icon;
+        icon.addEllipse (bounds.reduced (size * 0.1f));
+        wave.applyTransform (wave.getTransformToScaleToFit (bounds.withSizeKeepingCentre (size * 0.7f, size * 0.3f), false));
+        icon.addPath (wave);
+        icon.setUsingNonZeroWinding (false);
+
+        g.setColour (Colours::black);
+        g.fillPath (icon);
+        return image;
+    }
+
+    std::function<void()> onShow;
+    std::function<void()> onQuit;
+
+    JUCE_DECLARE_NON_COPYABLE (SonoMenuBarIcon)
+};
+#endif
+
+//==============================================================================
+class SonobusStandaloneFilterApp  : public JUCEApplication, public Timer, private Value::Listener
 {
 public:
     SonobusStandaloneFilterApp()
@@ -450,7 +506,18 @@ public:
             Desktop::getInstance().setKioskModeComponent (mainWindow.get(), false);
 #endif
 
+#if JUCE_MAC
+            mainWindow->pluginHolder->getRunInMenuBarValue().addListener (this);
+            updateMenuBarMode();
+#endif
+
             mainWindow->setVisible (true);
+
+#if JUCE_MAC
+            if (menuBarIcon != nullptr) {
+                activateMacApp();
+            }
+#endif
 
             Desktop::getInstance().setScreenSaverEnabled(false);
 
@@ -684,6 +751,13 @@ public:
             mainWindow->pluginHolder->saveAudioDeviceState();
         }
 
+#if JUCE_MAC
+        if (mainWindow.get() != nullptr) {
+            mainWindow->pluginHolder->getRunInMenuBarValue().removeListener (this);
+        }
+        menuBarIcon = nullptr;
+#endif
+
 #if JUCE_ANDROID
         setAndroidForegroundServiceActive(false);
   #if JUCE_OPENGL
@@ -708,7 +782,7 @@ public:
                 if (sonoproc->hasEditor()) {
                     if (auto * sonoeditor = dynamic_cast<SonobusAudioProcessorEditor*>(sonoproc->createEditorIfNeeded())) {
                         sonoeditor->handleURL(url.toString(true));
-                        mainWindow->toFront(true);
+                        showMainWindow();
                     }
                 }
             }
@@ -725,7 +799,7 @@ public:
                 if (sonoproc->hasEditor()) {
                     if (auto * sonoeditor = dynamic_cast<SonobusAudioProcessorEditor*>(sonoproc->createEditorIfNeeded())) {
                         sonoeditor->handleURL(url);
-                        mainWindow->toFront(true);
+                        showMainWindow();
                     }
                 }
             }
@@ -843,6 +917,61 @@ public:
         }
     }
 
+    void showMainWindow()
+    {
+        if (mainWindow.get() == nullptr) return;
+
+        mainWindow->setVisible (true);
+#if JUCE_MAC
+        // needed for keyboard focus when we have no Dock icon
+        activateMacApp();
+#endif
+        mainWindow->toFront (true);
+    }
+
+    void valueChanged (Value&) override
+    {
+        // the menu bar mode option was changed
+        updateMenuBarMode();
+
+        if (mainWindow.get() != nullptr) {
+            mainWindow->pluginHolder->saveAudioDeviceState();
+            appProperties.saveIfNeeded();
+        }
+    }
+
+    void updateMenuBarMode()
+    {
+#if JUCE_MAC
+        if (mainWindow.get() == nullptr) return;
+
+        const bool menuBarMode = (bool) mainWindow->pluginHolder->getRunInMenuBarValue().getValue();
+
+        if (menuBarMode == (menuBarIcon != nullptr)) {
+            return; // nothing changed
+        }
+
+        if (menuBarMode) {
+            menuBarIcon = std::make_unique<SonoMenuBarIcon> ([this]() { showMainWindow(); },
+                                                             [this]() {
+                // activate so a quit confirmation can get focus
+                activateMacApp();
+                systemRequestedQuit();
+            });
+        }
+        else {
+            menuBarIcon = nullptr;
+        }
+
+        setMacDockIconVisible (!menuBarMode);
+
+        // changing the activation policy can deactivate us, keep the window in front
+        if (mainWindow->isVisible() || !menuBarMode) {
+            showMainWindow();
+        }
+#endif
+    }
+
     void memoryWarningReceived()  override
     {
         DBG("Memory warning");
@@ -882,6 +1011,10 @@ protected:
 
     ApplicationProperties appProperties;
     std::unique_ptr<StandaloneFilterWindow> mainWindow;
+
+#if JUCE_MAC
+    std::unique_ptr<SystemTrayIconComponent> menuBarIcon;
+#endif
 
     // used only in headless mode
     std::unique_ptr<StandalonePluginHolder> pluginHolder;
